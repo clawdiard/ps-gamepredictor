@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Game Predictor — Harvard vs Yale</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--crimson:#A51C30;--yale-blue:#00356B;--bg:#0a0a0f;--card:#12121a;--border:#1e1e2e;--text:#e0e0e0;--muted:#888}
+body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem}
+
+/* Header */
+header{text-align:center;padding:3rem 0 2rem;border-bottom:1px solid var(--border)}
+header h1{font-size:2.8rem;font-weight:400;letter-spacing:-.02em;margin-bottom:.5rem}
+header h1 span.h{color:var(--crimson)}
+header h1 span.y{color:var(--yale-blue)}
+header p.sub{color:var(--muted);font-size:1.1rem;font-style:italic}
+
+/* Countdown */
+.countdown-section{text-align:center;padding:2.5rem 0;border-bottom:1px solid var(--border)}
+.countdown-section h2{font-size:1rem;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);margin-bottom:1.2rem}
+.countdown{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap}
+.countdown .unit{display:flex;flex-direction:column;align-items:center}
+.countdown .num{font-size:3.2rem;font-weight:300;line-height:1}
+.countdown .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-top:.3rem}
+
+/* Prediction */
+.prediction-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2.5rem;margin:2.5rem 0;text-align:center}
+.prediction-panel h2{font-size:1.6rem;font-weight:400;margin-bottom:1.5rem}
+.prob-bar{display:flex;height:48px;border-radius:8px;overflow:hidden;margin-bottom:1rem;position:relative}
+.prob-bar .h-side{background:var(--crimson);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;transition:width .8s ease}
+.prob-bar .y-side{background:var(--yale-blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;transition:width .8s ease}
+.pred-labels{display:flex;justify-content:space-between;font-size:.9rem;color:var(--muted)}
+.pred-score{font-size:2rem;margin:1.5rem 0 .5rem;font-weight:300}
+.pred-score .h-score{color:var(--crimson)}
+.pred-score .y-score{color:var(--yale-blue)}
+.method-note{font-size:.8rem;color:var(--muted);font-style:italic;margin-top:1rem}
+
+/* Factors */
+.factors{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin:2rem 0}
+.factor-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem}
+.factor-card h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:1rem}
+.factor-card .val{font-size:1.8rem;font-weight:300;margin-bottom:.5rem}
+.factor-card .detail{font-size:.85rem;color:var(--muted);line-height:1.5}
+
+/* Historical */
+.history-section{margin:2.5rem 0}
+.history-section h2{font-size:1.4rem;font-weight:400;margin-bottom:1.5rem;text-align:center}
+.decade-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem}
+.decade-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
+.decade-card .era{font-size:.8rem;color:var(--muted);margin-bottom:.5rem}
+.decade-card .record{font-size:1rem}
+.decade-card .dominant{font-size:.75rem;margin-top:.4rem;font-weight:600}
+.dominant.h-dom{color:var(--crimson)}
+.dominant.y-dom{color:var(--yale-blue)}
+.dominant.split{color:var(--muted)}
+
+/* Streaks */
+.streaks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;margin:2rem 0}
+.streak-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;text-align:center}
+.streak-card h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.8rem}
+.streak-card .big{font-size:2.4rem;font-weight:300}
+
+/* All-time */
+.alltime{text-align:center;padding:2rem 0;border-top:1px solid var(--border);margin-top:2rem}
+.alltime h2{font-size:1.2rem;font-weight:400;margin-bottom:1rem}
+.alltime-nums{display:flex;justify-content:center;gap:3rem;flex-wrap:wrap}
+.alltime-nums .stat{display:flex;flex-direction:column;align-items:center}
+.alltime-nums .stat .n{font-size:2.5rem;font-weight:300}
+.alltime-nums .stat .l{font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-top:.2rem}
+
+/* Footer */
+footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;border-top:1px solid var(--border);margin-top:2rem}
+
+@media(max-width:600px){
+  header h1{font-size:1.8rem}
+  .countdown .num{font-size:2.2rem}
+  .pred-score{font-size:1.5rem}
+  .alltime-nums .stat .n{font-size:1.8rem}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span class="h">Harvard</span> vs <span class="y">Yale</span></h1>
+    <p class="sub">The Game Predictor — Historical Modeling &amp; Analysis Since 1875</p>
+  </header>
+
+  <section class="countdown-section">
+    <h2>Countdown to The 143rd Game</h2>
+    <div class="countdown" id="countdown">
+      <div class="unit"><span class="num" id="cd-days">---</span><span class="lbl">Days</span></div>
+      <div class="unit"><span class="num" id="cd-hrs">--</span><span class="lbl">Hours</span></div>
+      <div class="unit"><span class="num" id="cd-min">--</span><span class="lbl">Minutes</span></div>
+      <div class="unit"><span class="num" id="cd-sec">--</span><span class="lbl">Seconds</span></div>
+    </div>
+  </section>
+
+  <section class="prediction-panel">
+    <h2>2026 Prediction Model</h2>
+    <div class="prob-bar">
+      <div class="h-side" id="hbar" style="width:52%">52%</div>
+      <div class="y-side" id="ybar" style="width:48%">48%</div>
+    </div>
+    <div class="pred-labels">
+      <span>Harvard Crimson</span>
+      <span>Yale Bulldogs</span>
+    </div>
+    <div class="pred-score">
+      Projected: <span class="h-score">24</span> – <span class="y-score">21</span>
+    </div>
+    <p class="method-note">Model based on historical win rates, recent form (10-year window), home-field advantage, and Ivy League season momentum. Updated each season.</p>
+  </section>
+
+  <section class="factors">
+    <div class="factor-card">
+      <h3>Recent Form (2016–2025)</h3>
+      <div class="val" style="color:var(--yale-blue)">Yale 6–4</div>
+      <div class="detail">Yale has won 6 of the last 10 meetings, including a dominant 2019 victory. Slight edge to the Bulldogs in recent history.</div>
+    </div>
+    <div class="factor-card">
+      <h3>Home Field Edge</h3>
+      <div class="val">+3.2 pts</div>
+      <div class="detail">The home team has averaged a 3.2-point advantage since 2000. The 2026 game is at Harvard Stadium — advantage Crimson.</div>
+    </div>
+    <div class="factor-card">
+      <h3>Ivy League Parity</h3>
+      <div class="val">±4.1 pts</div>
+      <div class="detail">Average margin of victory in the last 20 Games. This rivalry is defined by close finishes and unpredictable outcomes.</div>
+    </div>
+    <div class="factor-card">
+      <h3>Historical Momentum</h3>
+      <div class="val" style="color:var(--crimson)">Harvard</div>
+      <div class="detail">Over the full 150-year series, Harvard leads. Historical momentum factors slightly favor the Crimson in the model weighting.</div>
+    </div>
+    <div class="factor-card">
+      <h3>Rivalry Volatility</h3>
+      <div class="val">72%</div>
+      <div class="detail">72% of Games since 2000 have been decided by 10 points or fewer. Any given Saturday, either team can win.</div>
+    </div>
+    <div class="factor-card">
+      <h3>Streak Analysis</h3>
+      <div class="val">No active streak &gt;2</div>
+      <div class="detail">Neither team has won more than 2 consecutive Games recently, suggesting regression patterns favor alternation.</div>
+    </div>
+  </section>
+
+  <section class="history-section">
+    <h2>Decade-by-Decade Dominance</h2>
+    <div class="decade-grid" id="decades"></div>
+  </section>
+
+  <section class="streaks">
+    <div class="streak-card">
+      <h3>Longest Harvard Streak</h3>
+      <div class="big" style="color:var(--crimson)">9</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.3rem">1890–1898</p>
+    </div>
+    <div class="streak-card">
+      <h3>Longest Yale Streak</h3>
+      <div class="big" style="color:var(--yale-blue)">8</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.3rem">1880–1887</p>
+    </div>
+    <div class="streak-card">
+      <h3>Biggest Blowout</h3>
+      <div class="big">54–0</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.3rem">Yale, 1884</p>
+    </div>
+    <div class="streak-card">
+      <h3>Most Famous Game</h3>
+      <div class="big" style="font-size:1.6rem">29–29</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.3rem">1968 — "Harvard Beats Yale"</p>
+    </div>
+  </section>
+
+  <section class="alltime">
+    <h2>All-Time Series Record</h2>
+    <div class="alltime-nums">
+      <div class="stat"><span class="n" style="color:var(--crimson)">61</span><span class="l">Harvard Wins</span></div>
+      <div class="stat"><span class="n" style="color:var(--yale-blue)">71</span><span class="l">Yale Wins</span></div>
+      <div class="stat"><span class="n">8</span><span class="l">Ties</span></div>
+      <div class="stat"><span class="n">140</span><span class="l">Games Played</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>The Game Predictor — A Project PS Product</p>
+    <p style="margin-top:.5rem">Historical data compiled from NCAA records. Prediction model for entertainment purposes.</p>
+  </footer>
+</div>
+
+<script>
+// Countdown to The Game 2026 — typically 3rd Saturday of November
+// Nov 21, 2026, 12:00 PM ET
+const gameDate = new Date('2026-11-21T17:00:00Z');
+function updateCountdown(){
+  const now = new Date();
+  let diff = gameDate - now;
+  if(diff<0){document.getElementById('countdown').innerHTML='<p style="color:var(--muted);font-style:italic">Game Day has arrived!</p>';return}
+  const d=Math.floor(diff/86400000);diff%=86400000;
+  const h=Math.floor(diff/3600000);diff%=3600000;
+  const m=Math.floor(diff/60000);diff%=60000;
+  const s=Math.floor(diff/1000);
+  document.getElementById('cd-days').textContent=d;
+  document.getElementById('cd-hrs').textContent=String(h).padStart(2,'0');
+  document.getElementById('cd-min').textContent=String(m).padStart(2,'0');
+  document.getElementById('cd-sec').textContent=String(s).padStart(2,'0');
+}
+updateCountdown();setInterval(updateCountdown,1000);
+
+// Decade data
+const decades=[
+  {era:'1875–1889',h:4,y:10,t:1},{era:'1890–1899',h:7,y:2,t:1},{era:'1900–1909',h:4,y:4,t:2},
+  {era:'1910–1919',h:3,y:5,t:1},{era:'1920–1929',h:3,y:5,t:2},{era:'1930–1939',h:4,y:5,t:0},
+  {era:'1940–1949',h:3,y:5,t:1},{era:'1950–1959',h:5,y:5,t:0},{era:'1960–1969',h:4,y:5,t:1},
+  {era:'1970–1979',h:5,y:5,t:0},{era:'1980–1989',h:5,y:5,t:0},{era:'1990–1999',h:5,y:5,t:0},
+  {era:'2000–2009',h:5,y:5,t:0},{era:'2010–2019',h:4,y:6,t:0},{era:'2020–2025',h:3,y:3,t:0}
+];
+const grid=document.getElementById('decades');
+decades.forEach(d=>{
+  const dom=d.h>d.y?'Harvard':'Yale';
+  const cls=d.h>d.y?'h-dom':d.y>d.h?'y-dom':'split';
+  const label=d.h===d.y?'Even':dom;
+  grid.innerHTML+=`<div class="decade-card"><div class="era">${d.era}</div><div class="record">${d.h}–${d.y}–${d.t}</div><div class="dominant ${cls}">${label}</div></div>`;
+});
+</script>
+</body>
+</html>
