@@ -96,7 +96,12 @@ header p.sub{color:var(--muted);font-size:1.1rem;font-style:italic}
 /* Footer */
 footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;border-top:1px solid var(--border);margin-top:2rem}
 
+/* Monte Carlo */
+.monte-carlo{margin:2.5rem 0;padding:2.5rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+#mc-run-btn:hover{border-color:#666;background:#1a1a24}
+
 @media(max-width:600px){
+  #mc-summary-grid{grid-template-columns:1fr !important}
   header h1{font-size:1.8rem}
   .countdown .num{font-size:2.2rem}
   .pred-score{font-size:1.5rem}
@@ -164,6 +169,64 @@ footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;bord
     <div id="weight-breakdown" style="display:none;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
       <h3 style="font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:1rem;text-align:center">Model Weight Breakdown</h3>
       <div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap" id="weight-bars"></div>
+    </div>
+  </section>
+
+  <!-- Monte Carlo Simulation -->
+  <section class="monte-carlo" id="monte-carlo-section">
+    <h2 style="font-size:1.4rem;font-weight:400;margin-bottom:.5rem;text-align:center">Monte Carlo Simulation</h2>
+    <p style="text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:1.5rem">10,000 simulated outcomes based on historical scoring patterns &amp; current model</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem" id="mc-summary-grid">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;text-align:center">
+        <h3 style="font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.8rem">Harvard Win Probability</h3>
+        <div id="mc-h-prob" style="font-size:2.4rem;font-weight:300;color:var(--crimson)">—</div>
+        <div id="mc-h-ci" style="font-size:.75rem;color:var(--muted);margin-top:.3rem">95% CI: —</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;text-align:center">
+        <h3 style="font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.8rem">Yale Win Probability</h3>
+        <div id="mc-y-prob" style="font-size:2.4rem;font-weight:300;color:var(--yale-blue)">—</div>
+        <div id="mc-y-ci" style="font-size:.75rem;color:var(--muted);margin-top:.3rem">95% CI: —</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem" id="mc-stats-row">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.4rem">Avg Score</div>
+        <div id="mc-avg-score" style="font-size:1.2rem;font-weight:300">—</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.4rem">Median Margin</div>
+        <div id="mc-median-margin" style="font-size:1.2rem;font-weight:300">—</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.4rem">Tie Chance</div>
+        <div id="mc-tie" style="font-size:1.2rem;font-weight:300">—</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.4rem">Blowout (21+)</div>
+        <div id="mc-blowout" style="font-size:1.2rem;font-weight:300">—</div>
+      </div>
+    </div>
+    <!-- Distribution chart -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;position:relative">
+      <h3 style="font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:1rem;text-align:center">Score Margin Distribution</h3>
+      <div style="position:relative;height:220px;margin:0 auto;max-width:800px" id="mc-chart-container">
+        <canvas id="mc-canvas" style="width:100%;height:100%"></canvas>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:.5rem;max-width:800px;margin-left:auto;margin-right:auto">
+        <span>← Yale wins big</span>
+        <span>Even</span>
+        <span>Harvard wins big →</span>
+      </div>
+      <div style="display:flex;justify-content:center;gap:1.5rem;margin-top:1rem;font-size:.75rem">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yale-blue);vertical-align:middle;margin-right:4px"></span>Yale wins</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--muted);vertical-align:middle;margin-right:4px"></span>Tie</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--crimson);vertical-align:middle;margin-right:4px"></span>Harvard wins</span>
+      </div>
+    </div>
+    <!-- Simulation progress -->
+    <div style="text-align:center;margin-top:1rem">
+      <button id="mc-run-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:.5rem 1.5rem;border-radius:8px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:border-color .3s">▶ Re-run Simulation</button>
+      <div id="mc-progress" style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Initializing…</div>
     </div>
   </section>
 
@@ -586,6 +649,180 @@ function toggleDecade(idx) {
   // Scroll into view smoothly
   setTimeout(() => detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
+
+// ===== MONTE CARLO SIMULATION =====
+const MC_SIMS = 10000;
+const MC_BATCH = 500;
+
+function gaussRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+function simulateGame(hAdv) {
+  const baseMean = 21, stdDev = 9;
+  const shift = (hAdv - 0.5) * 7;
+  const h = Math.max(0, Math.round(baseMean + shift + gaussRand() * stdDev));
+  const y = Math.max(0, Math.round(baseMean - shift + gaussRand() * stdDev));
+  return { h, y, margin: h - y };
+}
+
+function runMonteCarlo(hAdv, onProgress, onComplete) {
+  const results = [];
+  let idx = 0;
+  function batch() {
+    const end = Math.min(idx + MC_BATCH, MC_SIMS);
+    for (let i = idx; i < end; i++) results.push(simulateGame(hAdv));
+    idx = end;
+    onProgress(results, idx, MC_SIMS);
+    if (idx < MC_SIMS) requestAnimationFrame(batch);
+    else onComplete(results);
+  }
+  requestAnimationFrame(batch);
+}
+
+function drawDistribution(canvas, results) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const binMin = -50, binMax = 50, binSize = 2;
+  const numBins = (binMax - binMin) / binSize;
+  const bins = new Array(numBins).fill(0);
+  results.forEach(r => {
+    const m = Math.max(binMin, Math.min(binMax - 1, r.margin));
+    const bi = Math.floor((m - binMin) / binSize);
+    if (bi >= 0 && bi < numBins) bins[bi]++;
+  });
+  const maxBin = Math.max(...bins, 1);
+
+  const padL = 5, padR = 5, padT = 10, padB = 25;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const barW = chartW / numBins;
+
+  // Zero line
+  const zeroIdx = Math.floor((0 - binMin) / binSize);
+  const zeroX = padL + zeroIdx * barW;
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(zeroX, padT); ctx.lineTo(zeroX, H - padB); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 95% CI shading
+  const sorted = results.map(r => r.margin).sort((a, b) => a - b);
+  const ci025 = sorted[Math.floor(results.length * 0.025)];
+  const ci975 = sorted[Math.floor(results.length * 0.975)];
+  const ciLX = padL + Math.floor((ci025 - binMin) / binSize) * barW;
+  const ciRX = padL + (Math.floor((ci975 - binMin) / binSize) + 1) * barW;
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillRect(ciLX, padT, ciRX - ciLX, chartH);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.font = '9px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('2.5%', ciLX, H - padB + 14);
+  ctx.fillText('97.5%', ciRX, H - padB + 14);
+
+  // Bars
+  bins.forEach((count, i) => {
+    if (count === 0) return;
+    const x = padL + i * barW;
+    const h = (count / maxBin) * chartH;
+    const y = padT + chartH - h;
+    const mc = binMin + i * binSize + binSize / 2;
+    ctx.fillStyle = mc > 0 ? 'rgba(165,28,48,0.8)' : mc < 0 ? 'rgba(0,53,107,0.8)' : 'rgba(136,136,136,0.8)';
+    ctx.fillRect(x + 0.5, y, Math.max(barW - 1, 1), h);
+  });
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = '10px Georgia';
+  ctx.textAlign = 'center';
+  for (let m = -40; m <= 40; m += 10) {
+    const x = padL + ((m - binMin) / binSize) * barW;
+    ctx.fillText(m === 0 ? '0' : (m > 0 ? '+' + m : String(m)), x, H - padB + 14);
+  }
+  canvas._lastResults = results;
+}
+
+function updateMCStats(results) {
+  const n = results.length;
+  const hWins = results.filter(r => r.h > r.y).length;
+  const yWins = results.filter(r => r.y > r.h).length;
+  const ties = results.filter(r => r.h === r.y).length;
+
+  document.getElementById('mc-h-prob').textContent = (hWins / n * 100).toFixed(1) + '%';
+  document.getElementById('mc-y-prob').textContent = (yWins / n * 100).toFixed(1) + '%';
+
+  const avgH = (results.reduce((s, r) => s + r.h, 0) / n).toFixed(1);
+  const avgY = (results.reduce((s, r) => s + r.y, 0) / n).toFixed(1);
+  document.getElementById('mc-avg-score').innerHTML = '<span style="color:var(--crimson)">' + avgH + '</span> – <span style="color:var(--yale-blue)">' + avgY + '</span>';
+
+  const margins = results.map(r => r.margin).sort((a, b) => a - b);
+  const median = margins[Math.floor(n / 2)];
+  const medStr = median > 0 ? 'H +' + median : median < 0 ? 'Y +' + Math.abs(median) : 'Even';
+  const medColor = median > 0 ? 'var(--crimson)' : median < 0 ? 'var(--yale-blue)' : 'var(--muted)';
+  document.getElementById('mc-median-margin').innerHTML = '<span style="color:' + medColor + '">' + medStr + '</span>';
+
+  document.getElementById('mc-tie').textContent = (ties / n * 100).toFixed(1) + '%';
+  const blowouts = results.filter(r => Math.abs(r.margin) >= 21).length;
+  document.getElementById('mc-blowout').textContent = (blowouts / n * 100).toFixed(1) + '%';
+
+  const ci025 = margins[Math.floor(n * 0.025)];
+  const ci975 = margins[Math.floor(n * 0.975)];
+  const fmtCI = v => v > 0 ? 'H+' + v : v < 0 ? 'Y+' + Math.abs(v) : '0';
+  document.getElementById('mc-h-ci').textContent = '95% CI margin: ' + fmtCI(ci025) + ' to ' + fmtCI(ci975);
+  document.getElementById('mc-y-ci').textContent = ties > 0 ? (ties / n * 100).toFixed(1) + '% ties' : 'No ties in sim';
+}
+
+let mcAdvantage = 0.52;
+
+function startMC() {
+  const canvas = document.getElementById('mc-canvas');
+  const progress = document.getElementById('mc-progress');
+  progress.textContent = 'Running simulation\u2026';
+  runMonteCarlo(mcAdvantage,
+    function(results, done, total) {
+      progress.textContent = 'Simulating\u2026 ' + done.toLocaleString() + ' / ' + total.toLocaleString();
+      if (done % 2000 === 0 || done === total) {
+        drawDistribution(canvas, results);
+        updateMCStats(results);
+      }
+    },
+    function(results) {
+      progress.textContent = '\u2713 ' + MC_SIMS.toLocaleString() + ' simulations complete';
+      drawDistribution(canvas, results);
+      updateMCStats(results);
+    }
+  );
+}
+
+// Hook into prediction model
+const _origUpdatePredUI = updatePredictionUI;
+updatePredictionUI = function(pred, isLive) {
+  _origUpdatePredUI(pred, isLive);
+  mcAdvantage = pred.hPct / 100;
+  startMC();
+};
+
+document.getElementById('mc-run-btn').addEventListener('click', startMC);
+window.addEventListener('resize', function() {
+  const canvas = document.getElementById('mc-canvas');
+  if (canvas._lastResults) drawDistribution(canvas, canvas._lastResults);
+});
+
+// Initial run if prediction hasn't fired
+setTimeout(function() {
+  if (document.getElementById('mc-h-prob').textContent === '\u2014') startMC();
+}, 2000);
 </script>
 </body>
 </html>
