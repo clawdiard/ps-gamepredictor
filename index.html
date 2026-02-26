@@ -98,8 +98,34 @@ footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;bord
     </div>
   </section>
 
+  <section class="season-standings" id="standings-section" style="margin:2.5rem 0;display:none">
+    <h2 style="font-size:1.4rem;font-weight:400;margin-bottom:1.5rem;text-align:center">
+      <span id="season-year">2025</span> Ivy League Season Standings
+      <span id="standings-live-badge" style="display:inline-block;background:#22c55e;color:#000;font-size:.6rem;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:.5rem;text-transform:uppercase;letter-spacing:.1em">Live</span>
+    </h2>
+    <div style="overflow-x:auto">
+      <table id="standings-table" style="width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:.8rem 1rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">Team</th>
+            <th style="padding:.8rem 1rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">Conf</th>
+            <th style="padding:.8rem 1rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">Overall</th>
+            <th style="padding:.8rem 1rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">PF</th>
+            <th style="padding:.8rem 1rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">PA</th>
+            <th style="padding:.8rem 1rem;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)">Diff</th>
+          </tr>
+        </thead>
+        <tbody id="standings-body"></tbody>
+      </table>
+    </div>
+    <p id="standings-updated" style="text-align:center;font-size:.7rem;color:var(--muted);margin-top:.8rem;font-style:italic"></p>
+  </section>
+
   <section class="prediction-panel">
     <h2>2026 Prediction Model</h2>
+    <div id="model-source-badge" style="text-align:center;margin-bottom:1rem">
+      <span id="model-badge" style="display:inline-block;background:var(--border);color:var(--muted);font-size:.65rem;padding:2px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.1em">Historical baseline</span>
+    </div>
     <div class="prob-bar">
       <div class="h-side" id="hbar" style="width:52%">52%</div>
       <div class="y-side" id="ybar" style="width:48%">48%</div>
@@ -109,9 +135,13 @@ footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;bord
       <span>Yale Bulldogs</span>
     </div>
     <div class="pred-score">
-      Projected: <span class="h-score">24</span> – <span class="y-score">21</span>
+      Projected: <span class="h-score" id="h-proj-score">24</span> – <span class="y-score" id="y-proj-score">21</span>
     </div>
-    <p class="method-note">Model based on historical win rates, recent form (10-year window), home-field advantage, and Ivy League season momentum. Updated each season.</p>
+    <p class="method-note">Model based on historical win rates, recent form (10-year window), home-field advantage, and <strong>live Ivy League season data</strong>. Weights auto-adjust as the season progresses.</p>
+    <div id="weight-breakdown" style="display:none;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <h3 style="font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:1rem;text-align:center">Model Weight Breakdown</h3>
+      <div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap" id="weight-bars"></div>
+    </div>
   </section>
 
   <section class="factors">
@@ -125,15 +155,15 @@ footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem;bord
       <div class="val">+3.2 pts</div>
       <div class="detail">The home team has averaged a 3.2-point advantage since 2000. The 2026 game is at Harvard Stadium — advantage Crimson.</div>
     </div>
-    <div class="factor-card">
-      <h3>Ivy League Parity</h3>
-      <div class="val">±4.1 pts</div>
-      <div class="detail">Average margin of victory in the last 20 Games. This rivalry is defined by close finishes and unpredictable outcomes.</div>
+    <div class="factor-card" id="season-momentum-card">
+      <h3>Season Momentum</h3>
+      <div class="val" id="season-momentum-val" style="color:var(--muted)">Loading…</div>
+      <div class="detail" id="season-momentum-detail">Fetching current Ivy League season data to calculate momentum factor.</div>
     </div>
-    <div class="factor-card">
-      <h3>Historical Momentum</h3>
-      <div class="val" style="color:var(--crimson)">Harvard</div>
-      <div class="detail">Over the full 150-year series, Harvard leads. Historical momentum factors slightly favor the Crimson in the model weighting.</div>
+    <div class="factor-card" id="scoring-power-card">
+      <h3>Scoring Power Index</h3>
+      <div class="val" id="scoring-power-val" style="color:var(--muted)">Loading…</div>
+      <div class="detail" id="scoring-power-detail">Comparing points-for and points-against differentials from the current season.</div>
     </div>
     <div class="factor-card">
       <h3>Rivalry Volatility</h3>
@@ -209,6 +239,228 @@ function updateCountdown(){
   document.getElementById('cd-sec').textContent=String(s).padStart(2,'0');
 }
 updateCountdown();setInterval(updateCountdown,1000);
+
+// ===== LIVE SEASON DATA INTEGRATION =====
+const ESPN_IVY_STANDINGS = 'https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=22';
+const FALLBACK_DATA_URL = 'data/ivy-league.json';
+
+// Baseline model weights (no season data)
+const BASE_WEIGHTS = { historical: 0.30, recentForm: 0.35, homefield: 0.20, season: 0.15 };
+// With live data, season weight increases
+const LIVE_WEIGHTS = { historical: 0.20, recentForm: 0.25, homefield: 0.15, season: 0.40 };
+
+// Base factor scores (Harvard perspective, 0-1 scale, 0.5 = neutral)
+const BASE_SCORES = { historical: 0.53, recentForm: 0.42, homefield: 0.62 };
+
+function computePrediction(weights, seasonScore) {
+  const wSum = weights.historical + weights.recentForm + weights.homefield + weights.season;
+  const raw = (
+    weights.historical * BASE_SCORES.historical +
+    weights.recentForm * BASE_SCORES.recentForm +
+    weights.homefield * BASE_SCORES.homefield +
+    weights.season * seasonScore
+  ) / wSum;
+  // Clamp between 0.25 and 0.75 for realism
+  const hProb = Math.max(0.25, Math.min(0.75, raw));
+  const hPct = Math.round(hProb * 100);
+  const yPct = 100 - hPct;
+  // Projected score: base around 21-24 range, adjust by probability
+  const totalPts = 45;
+  const hScore = Math.round(totalPts * hProb);
+  const yScore = Math.round(totalPts * (1 - hProb));
+  return { hPct, yPct, hScore, yScore, weights, seasonScore };
+}
+
+function updatePredictionUI(pred, isLive) {
+  document.getElementById('hbar').style.width = pred.hPct + '%';
+  document.getElementById('hbar').textContent = pred.hPct + '%';
+  document.getElementById('ybar').style.width = pred.yPct + '%';
+  document.getElementById('ybar').textContent = pred.yPct + '%';
+  document.getElementById('h-proj-score').textContent = pred.hScore;
+  document.getElementById('y-proj-score').textContent = pred.yScore;
+
+  const badge = document.getElementById('model-badge');
+  if (isLive) {
+    badge.textContent = 'Season-adjusted';
+    badge.style.background = '#22c55e';
+    badge.style.color = '#000';
+  } else {
+    badge.textContent = 'Historical baseline';
+  }
+
+  // Weight breakdown
+  const wb = document.getElementById('weight-breakdown');
+  const bars = document.getElementById('weight-bars');
+  wb.style.display = 'block';
+  const labels = { historical: 'Historical', recentForm: 'Recent Form', homefield: 'Home Field', season: 'Season Data' };
+  const colors = { historical: 'var(--muted)', recentForm: '#a78bfa', homefield: '#f59e0b', season: '#22c55e' };
+  bars.innerHTML = '';
+  for (const [k, v] of Object.entries(pred.weights)) {
+    const pct = Math.round(v * 100);
+    bars.innerHTML += `<div style="text-align:center;min-width:80px">
+      <div style="height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:.3rem">
+        <div style="width:28px;background:${colors[k]};border-radius:4px 4px 0 0;height:${pct * 1.4}px;opacity:.85"></div>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted)">${labels[k]}</div>
+      <div style="font-size:.85rem;font-weight:600">${pct}%</div>
+    </div>`;
+  }
+}
+
+function buildStandingsTable(teams) {
+  // Sort by conf wins desc, then overall wins
+  teams.sort((a, b) => b.confWins - a.confWins || b.overallWins - a.overallWins || (b.pf - b.pa) - (a.pf - a.pa));
+  const tbody = document.getElementById('standings-body');
+  tbody.innerHTML = '';
+  teams.forEach((t, i) => {
+    const diff = t.pf - t.pa;
+    const diffStr = diff > 0 ? '+' + diff : String(diff);
+    const diffColor = diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'var(--muted)';
+    const isHY = t.id === 'harvard' || t.id === 'yale';
+    const nameColor = t.id === 'harvard' ? 'var(--crimson)' : t.id === 'yale' ? 'var(--yale-blue)' : 'var(--text)';
+    const bg = isHY ? 'rgba(255,255,255,0.03)' : 'transparent';
+    tbody.innerHTML += `<tr style="border-bottom:1px solid var(--border);background:${bg}">
+      <td style="padding:.6rem 1rem;font-weight:${isHY ? '600' : '400'};color:${nameColor}">${t.name}</td>
+      <td style="padding:.6rem 1rem;text-align:center">${t.confWins}–${t.confLosses}</td>
+      <td style="padding:.6rem 1rem;text-align:center">${t.overallWins}–${t.overallLosses}</td>
+      <td style="padding:.6rem 1rem;text-align:center">${t.pf}</td>
+      <td style="padding:.6rem 1rem;text-align:center">${t.pa}</td>
+      <td style="padding:.6rem 1rem;text-align:center;color:${diffColor}">${diffStr}</td>
+    </tr>`;
+  });
+}
+
+function calcSeasonScore(harvard, yale) {
+  // Returns 0-1 score (Harvard perspective)
+  if (!harvard || !yale) return 0.5;
+  const totalGames = harvard.overallWins + harvard.overallLosses + yale.overallWins + yale.overallLosses;
+  if (totalGames === 0) return 0.5;
+
+  // Win rate comparison
+  const hGames = harvard.overallWins + harvard.overallLosses || 1;
+  const yGames = yale.overallWins + yale.overallLosses || 1;
+  const hWinRate = harvard.overallWins / hGames;
+  const yWinRate = yale.overallWins / yGames;
+  const winRateFactor = 0.5 + (hWinRate - yWinRate) * 0.5;
+
+  // Point differential comparison
+  const hDiff = (harvard.pf - harvard.pa) / hGames;
+  const yDiff = (yale.pf - yale.pa) / yGames;
+  const maxDiff = 30;
+  const ptDiffFactor = 0.5 + ((hDiff - yDiff) / (2 * maxDiff)) * 0.5;
+
+  // Conference record comparison
+  const hConfGames = harvard.confWins + harvard.confLosses || 1;
+  const yConfGames = yale.confWins + yale.confLosses || 1;
+  const hConfRate = harvard.confWins / hConfGames;
+  const yConfRate = yale.confWins / yConfGames;
+  const confFactor = 0.5 + (hConfRate - yConfRate) * 0.5;
+
+  // Weighted combination
+  const score = winRateFactor * 0.35 + ptDiffFactor * 0.35 + confFactor * 0.30;
+  return Math.max(0.1, Math.min(0.9, score));
+}
+
+async function fetchLiveStandings() {
+  try {
+    const res = await fetch(ESPN_IVY_STANDINGS);
+    if (!res.ok) throw new Error('ESPN API error');
+    const data = await res.json();
+    const teams = [];
+    const entries = data?.children?.[0]?.standings?.entries || [];
+    const teamMap = {
+      '108': 'harvard', '43': 'yale', '219': 'princeton', '172': 'penn',
+      '148': 'dartmouth', '38': 'columbia', '225': 'brown', '171': 'cornell'
+    };
+    entries.forEach(e => {
+      const id = String(e.team?.id);
+      const key = teamMap[id];
+      const stats = {};
+      (e.stats || []).forEach(s => { stats[s.name] = s.value || parseFloat(s.displayValue) || 0; });
+      teams.push({
+        id: key || id,
+        name: e.team?.displayName || e.team?.name || 'Unknown',
+        overallWins: stats.wins || 0,
+        overallLosses: stats.losses || 0,
+        confWins: stats.conferenceWins || stats.groupWins || 0,
+        confLosses: stats.conferenceLosses || stats.groupLosses || 0,
+        pf: stats.pointsFor || 0,
+        pa: stats.pointsAgainst || 0
+      });
+    });
+    return { teams, live: true };
+  } catch (err) {
+    console.warn('ESPN fetch failed, trying fallback:', err);
+    try {
+      const res = await fetch(FALLBACK_DATA_URL);
+      const data = await res.json();
+      const teams = Object.entries(data.teams).map(([id, t]) => ({
+        id, name: t.name,
+        overallWins: t.overallWins, overallLosses: t.overallLosses,
+        confWins: t.confWins, confLosses: t.confLosses,
+        pf: t.pointsFor, pa: t.pointsAgainst
+      }));
+      return { teams, live: false };
+    } catch { return { teams: [], live: false }; }
+  }
+}
+
+(async function initSeasonData() {
+  const { teams, live } = await fetchLiveStandings();
+  const section = document.getElementById('standings-section');
+  if (teams.length === 0) {
+    // No data — use baseline prediction
+    updatePredictionUI(computePrediction(BASE_WEIGHTS, 0.5), false);
+    document.getElementById('season-momentum-val').textContent = 'No Data';
+    document.getElementById('season-momentum-detail').textContent = 'Season data unavailable. Model uses historical baseline only.';
+    document.getElementById('scoring-power-val').textContent = 'N/A';
+    document.getElementById('scoring-power-detail').textContent = 'No current season data to calculate scoring differentials.';
+    return;
+  }
+
+  section.style.display = 'block';
+  const badge = document.getElementById('standings-live-badge');
+  if (!live) {
+    badge.textContent = 'Cached';
+    badge.style.background = 'var(--border)';
+    badge.style.color = 'var(--muted)';
+  }
+  document.getElementById('standings-updated').textContent = live
+    ? 'Data from ESPN — updated in real time'
+    : 'Using cached fallback data';
+
+  buildStandingsTable(teams);
+
+  const harvard = teams.find(t => t.id === 'harvard');
+  const yale = teams.find(t => t.id === 'yale');
+  const seasonScore = calcSeasonScore(harvard, yale);
+  const weights = live ? LIVE_WEIGHTS : BASE_WEIGHTS;
+  const pred = computePrediction(weights, seasonScore);
+  updatePredictionUI(pred, live);
+
+  // Update momentum card
+  const momEl = document.getElementById('season-momentum-val');
+  const momDet = document.getElementById('season-momentum-detail');
+  if (harvard && yale) {
+    const hW = harvard.overallWins, yW = yale.overallWins;
+    if (hW > yW) { momEl.textContent = 'Harvard'; momEl.style.color = 'var(--crimson)'; }
+    else if (yW > hW) { momEl.textContent = 'Yale'; momEl.style.color = 'var(--yale-blue)'; }
+    else { momEl.textContent = 'Even'; momEl.style.color = 'var(--muted)'; }
+    momDet.textContent = `Harvard ${hW}–${harvard.overallLosses} overall vs Yale ${yW}–${yale.overallLosses}. Season record directly influences model weight by ${Math.round(weights.season * 100)}%.`;
+  }
+
+  // Update scoring power card
+  const spEl = document.getElementById('scoring-power-val');
+  const spDet = document.getElementById('scoring-power-detail');
+  if (harvard && yale) {
+    const hDiff = harvard.pf - harvard.pa;
+    const yDiff = yale.pf - yale.pa;
+    const leader = hDiff > yDiff ? 'Harvard' : yDiff > hDiff ? 'Yale' : 'Even';
+    spEl.textContent = (hDiff > yDiff ? '+' : '') + (hDiff - yDiff);
+    spEl.style.color = hDiff > yDiff ? 'var(--crimson)' : yDiff > hDiff ? 'var(--yale-blue)' : 'var(--muted)';
+    spDet.textContent = `Harvard PD: ${hDiff >= 0 ? '+' : ''}${hDiff} | Yale PD: ${yDiff >= 0 ? '+' : ''}${yDiff}. Net differential advantage factors into scoring projections.`;
+  }
+})();
 
 // Decade data
 const decades=[

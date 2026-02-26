@@ -1,0 +1,19 @@
+{
+  "season": 2025,
+  "lastUpdated": "2026-02-26T20:00:00Z",
+  "note": "Ivy League 2025-26 season standings — fallback data if live fetch fails",
+  "teams": {
+    "harvard": {
+      "name": "Harvard Crimson",
+      "overallWins": 0, "overallLosses": 0,
+      "confWins": 0, "confLosses": 0,
+      "pointsFor": 0, "pointsAgainst": 0
+    },
+    "yale": {
+      "name": "Yale Bulldogs",
+      "overallWins": 0, "overallLosses": 0,
+      "confWins": 0, "confLosses": 0,
+      "pointsFor": 0, "pointsAgainst": 0
+    }
+  }
+}
