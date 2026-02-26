@@ -48,10 +48,33 @@ header p.sub{color:var(--muted);font-size:1.1rem;font-style:italic}
 .history-section{margin:2.5rem 0}
 .history-section h2{font-size:1.4rem;font-weight:400;margin-bottom:1.5rem;text-align:center}
 .decade-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem}
-.decade-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
+.decade-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;transition:border-color .3s,box-shadow .3s}
+.decade-card:hover{border-color:#444;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.decade-card.active{border-color:#666}
 .decade-card .era{font-size:.8rem;color:var(--muted);margin-bottom:.5rem}
 .decade-card .record{font-size:1rem}
 .decade-card .dominant{font-size:.75rem;margin-top:.4rem;font-weight:600}
+.decade-card .expand-hint{font-size:.6rem;color:var(--muted);margin-top:.4rem;opacity:.6;transition:opacity .3s}
+.decade-card:hover .expand-hint{opacity:1}
+
+/* Expanded game detail panel */
+.decade-detail{display:none;grid-column:1/-1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-top:.5rem;animation:fadeSlide .3s ease}
+.decade-detail.open{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.game-list{list-style:none;padding:0;margin:0}
+.game-item{display:flex;align-items:center;gap:1rem;padding:.6rem .5rem;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap}
+.game-item:last-child{border-bottom:none}
+.game-year{font-weight:600;min-width:3rem;color:var(--muted);font-size:.8rem}
+.game-score{min-width:5rem;font-weight:600;font-size:.95rem}
+.game-score .hw{color:var(--crimson)}
+.game-score .yw{color:var(--yale-blue)}
+.game-score .tie{color:var(--muted)}
+.game-venue{color:var(--muted);font-size:.75rem;flex:1;min-width:120px}
+.game-note{font-size:.75rem;color:#a78bfa;font-style:italic;width:100%;padding-left:4rem;margin-top:.2rem}
+.game-winner-bar{width:4px;height:20px;border-radius:2px;flex-shrink:0}
+.game-winner-bar.h-win{background:var(--crimson)}
+.game-winner-bar.y-win{background:var(--yale-blue)}
+.game-winner-bar.draw{background:var(--muted)}
 .dominant.h-dom{color:var(--crimson)}
 .dominant.y-dom{color:var(--yale-blue)}
 .dominant.split{color:var(--muted)}
@@ -462,21 +485,107 @@ async function fetchLiveStandings() {
   }
 })();
 
-// Decade data
+// Decade data with year ranges for filtering
 const decades=[
-  {era:'1875–1889',h:4,y:10,t:1},{era:'1890–1899',h:7,y:2,t:1},{era:'1900–1909',h:4,y:4,t:2},
-  {era:'1910–1919',h:3,y:5,t:1},{era:'1920–1929',h:3,y:5,t:2},{era:'1930–1939',h:4,y:5,t:0},
-  {era:'1940–1949',h:3,y:5,t:1},{era:'1950–1959',h:5,y:5,t:0},{era:'1960–1969',h:4,y:5,t:1},
-  {era:'1970–1979',h:5,y:5,t:0},{era:'1980–1989',h:5,y:5,t:0},{era:'1990–1999',h:5,y:5,t:0},
-  {era:'2000–2009',h:5,y:5,t:0},{era:'2010–2019',h:4,y:6,t:0},{era:'2020–2025',h:3,y:3,t:0}
+  {era:'1875–1889',h:4,y:10,t:1,from:1875,to:1889},{era:'1890–1899',h:7,y:2,t:1,from:1890,to:1899},
+  {era:'1900–1909',h:4,y:4,t:2,from:1900,to:1909},{era:'1910–1919',h:3,y:5,t:1,from:1910,to:1919},
+  {era:'1920–1929',h:3,y:5,t:2,from:1920,to:1929},{era:'1930–1939',h:4,y:5,t:0,from:1930,to:1939},
+  {era:'1940–1949',h:3,y:5,t:1,from:1940,to:1949},{era:'1950–1959',h:5,y:5,t:0,from:1950,to:1959},
+  {era:'1960–1969',h:4,y:5,t:1,from:1960,to:1969},{era:'1970–1979',h:5,y:5,t:0,from:1970,to:1979},
+  {era:'1980–1989',h:5,y:5,t:0,from:1980,to:1989},{era:'1990–1999',h:5,y:5,t:0,from:1990,to:1999},
+  {era:'2000–2009',h:5,y:5,t:0,from:2000,to:2009},{era:'2010–2019',h:4,y:6,t:0,from:2010,to:2019},
+  {era:'2020–2025',h:3,y:3,t:0,from:2020,to:2025}
 ];
-const grid=document.getElementById('decades');
-decades.forEach(d=>{
-  const dom=d.h>d.y?'Harvard':'Yale';
-  const cls=d.h>d.y?'h-dom':d.y>d.h?'y-dom':'split';
-  const label=d.h===d.y?'Even':dom;
-  grid.innerHTML+=`<div class="decade-card"><div class="era">${d.era}</div><div class="record">${d.h}–${d.y}–${d.t}</div><div class="dominant ${cls}">${label}</div></div>`;
+
+let allGames = [];
+let activeDecadeIdx = -1;
+
+// Load game history data
+fetch('data/game-history.json')
+  .then(r => r.json())
+  .then(data => { allGames = data.games || []; })
+  .catch(() => { console.warn('Game history data not available'); });
+
+function getGamesForDecade(from, to) {
+  return allGames.filter(g => g.year >= from && g.year <= to);
+}
+
+function renderGameList(games) {
+  if (!games.length) return '<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:1rem 0">No game data available for this period.</p>';
+  let html = '<ul class="game-list">';
+  games.forEach(g => {
+    const hWin = g.h > g.y, yWin = g.y > g.h, tie = g.h === g.y;
+    const barCls = hWin ? 'h-win' : yWin ? 'y-win' : 'draw';
+    const scoreCls = hWin ? 'hw' : yWin ? 'yw' : 'tie';
+    const winner = hWin ? 'H' : yWin ? 'Y' : 'T';
+    html += `<li class="game-item">
+      <span class="game-year">${g.year}</span>
+      <span class="game-winner-bar ${barCls}"></span>
+      <span class="game-score"><span class="${scoreCls}">${g.h}–${g.y}</span></span>
+      <span class="game-venue">📍 ${g.venue || 'Unknown'}</span>
+      ${g.note ? `<span class="game-note">★ ${g.note}</span>` : ''}
+    </li>`;
+  });
+  html += '</ul>';
+  return html;
+}
+
+const grid = document.getElementById('decades');
+
+// Build decade cards
+decades.forEach((d, i) => {
+  const dom = d.h > d.y ? 'Harvard' : 'Yale';
+  const cls = d.h > d.y ? 'h-dom' : d.y > d.h ? 'y-dom' : 'split';
+  const label = d.h === d.y ? 'Even' : dom;
+  const card = document.createElement('div');
+  card.className = 'decade-card';
+  card.dataset.idx = i;
+  card.innerHTML = `<div class="era">${d.era}</div><div class="record">${d.h}–${d.y}–${d.t}</div><div class="dominant ${cls}">${label}</div><div class="expand-hint">Click to explore →</div>`;
+  card.addEventListener('click', () => toggleDecade(i));
+  grid.appendChild(card);
 });
+
+// Detail panel (single, moves around in the grid)
+const detailPanel = document.createElement('div');
+detailPanel.className = 'decade-detail';
+detailPanel.id = 'decade-detail';
+
+function toggleDecade(idx) {
+  const cards = grid.querySelectorAll('.decade-card');
+  const d = decades[idx];
+
+  // Close if same card clicked
+  if (activeDecadeIdx === idx) {
+    detailPanel.classList.remove('open');
+    cards[idx].classList.remove('active');
+    activeDecadeIdx = -1;
+    return;
+  }
+
+  // Remove active from previous
+  if (activeDecadeIdx >= 0) cards[activeDecadeIdx].classList.remove('active');
+
+  // Find the end of the current row to insert detail panel after
+  const card = cards[idx];
+  const cardTop = card.offsetTop;
+  let lastInRow = card;
+  for (let j = idx + 1; j < cards.length; j++) {
+    if (cards[j].offsetTop === cardTop) lastInRow = cards[j];
+    else break;
+  }
+
+  // Insert detail after last card in the row
+  lastInRow.after(detailPanel);
+
+  const games = getGamesForDecade(d.from, d.to);
+  detailPanel.innerHTML = `<h3 style="font-size:1rem;font-weight:400;margin-bottom:1rem;text-align:center">${d.era} — Game-by-Game Results</h3>${renderGameList(games)}`;
+  detailPanel.classList.add('open');
+  card.classList.add('active');
+  activeDecadeIdx = idx;
+
+  // Scroll into view smoothly
+  setTimeout(() => detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
 </script>
 </body>
 </html>
